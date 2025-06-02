@@ -119,7 +119,7 @@ def list_teachers():
     for t in teachers:
         print(f"[{t.id}] {t.name} | {t.email} | Subject ID: {t.subject_id}")
 
-def mark_attendance():
+def mark_attendance(session):
     student_id = input("Enter student ID: ")
     date = input("Enter date (YYYY-MM-DD): ")
     status = input("Enter status (Present/Absent): ")
