@@ -1,6 +1,6 @@
 # IMPORTS
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import create_engine, Column, Integer, String,ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base,relationship
 from sqlalchemy.exc import IntegrityError
 
 # DATABASE SETUP
@@ -11,14 +11,23 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 # MODELS
+class Grade(Base):
+    __tablename__ = "grades"
+    id = Column(Integer, primary_key=True)
+    student_id = Column(Integer, ForeignKey('students.id'))
+    subject_id = Column(Integer)
+    grade = Column(Integer)
+    term = Column(Integer)
+    student = relationship("Student", back_populates="grades")
 
-class Students(Base):
+class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True)
     class_id = Column(Integer)
     gender = Column(String)
+    grades=relationship("Grade",back_populates="student")
 
 class Teachers(Base):
     __tablename__ = "teachers"
@@ -34,13 +43,7 @@ class Attendance(Base):
     date = Column(String)
     status = Column(String, nullable=False)
 
-class Grades(Base):
-    __tablename__ = "grades"
-    id = Column(Integer, primary_key=True)
-    student_id = Column(Integer)
-    subject_id = Column(Integer)
-    grade = Column(Integer)
-    term = Column(Integer)
+
 
 class Classroom(Base):
     __tablename__ = "classroom"
@@ -62,7 +65,7 @@ Base.metadata.create_all(engine)
 # UTILITY FUNCTIONS
 
 def get_student_by_email(email):
-    return session.query(Students).filter_by(email=email).first()
+    return session.query(Student).filter_by(email=email).first()
 
 def get_teacher_by_email(email):
     return session.query(Teachers).filter_by(email=email).first()
@@ -78,7 +81,7 @@ def add_student():
         print(f"Student already exists: {email}")
         return
     try:
-        student = Students(name=name, email=email, class_id=class_id, gender=gender)
+        student = Student(name=name, email=email, class_id=class_id, gender=gender)
         session.add(student)
         session.commit()
         print(f"{name} added successfully.")
@@ -87,7 +90,7 @@ def add_student():
         print("Error: Email already exists.")
 
 def list_students():
-    students = session.query(Students).all()
+    students = session.query(Student).all()
     if not students:
         print("No students found.")
     for s in students:
@@ -125,13 +128,27 @@ def mark_attendance():
     session.commit()
     print(f"Attendance marked for student ID {student_id} on {date} as {status}.")
 
+
+def view_register(sesssion):
+    students = session.query(Student).all()
+
+    print("\n=== STUDENT REGISTER ===")
+    if not students:
+        print("No students found.")
+        return
+
+    for s in students:
+        status = "Has Grades" if s.grades else "~~ No Grades"
+        print(f"- {s.name} ({s.email}) --> {status}")
+
+
 def view_grades():
     student_email = input("Enter student email to view grades: ")
     student = get_student_by_email(student_email)
     if not student:
         print("No such student.")
         return
-    grades = session.query(Grades).filter_by(student_id=student.id).all()
+    grades = session.query(Grade).filter_by(student_id=student.id).all()
     if not grades:
         print("No grades found for this student.")
     else:
@@ -141,24 +158,28 @@ def view_grades():
 
 # MAIN MENU
 def main():
+    session = Session()
     actions = {
         "1": add_student,
         "2": list_students,
         "3": add_teacher,
         "4": list_teachers,
         "5": mark_attendance,
-        "6": view_grades,
+        "6": view_register,
+        "7": view_grades,
     }
 
     while True:
-        print("\n--- School Management System ---")
+        print("\n--- Invictus Managment System ---")
+        
         print("0. Exit")
         print("1. Add Student")
         print("2. List Students")
         print("3. Add Teacher")
         print("4. List Teachers")
         print("5. Mark Attendance")
-        print("6. View Student Grades")
+        print("6. View Register")
+        print("7. View Student Grades")
         choice = input("Enter an option: ")
 
         if choice == "0":
@@ -167,7 +188,7 @@ def main():
 
         action = actions.get(choice)
         if action:
-            action()
+            action(session)
         else:
             print("Invalid option.")
 
