@@ -72,7 +72,7 @@ def get_teacher_by_email(email):
 
 # CRUD OPERATIONS
 
-def add_student():
+def add_student(session):
     name = input("Enter student name: ")
     email = input("Enter email: ")
     class_id = input("Enter class ID: ")
@@ -89,14 +89,14 @@ def add_student():
         session.rollback()
         print("Error: Email already exists.")
 
-def list_students():
+def list_students(session):
     students = session.query(Student).all()
     if not students:
         print("No students found.")
     for s in students:
         print(f"[{s.id}] {s.name} | {s.email} | Class ID: {s.class_id} | Gender: {s.gender}")
 
-def add_teacher():
+def add_teacher(session):
     name = input("Enter teacher name: ")
     email = input("Enter email: ")
     subject_id = input("Enter subject ID: ")
@@ -112,7 +112,7 @@ def add_teacher():
         session.rollback()
         print("Error: Email already exists.")
 
-def list_teachers():
+def list_teachers(session):
     teachers = session.query(Teachers).all()
     if not teachers:
         print("No teachers found.")
@@ -141,8 +141,53 @@ def view_register(sesssion):
         status = "Has Grades" if s.grades else "~~ No Grades"
         print(f"- {s.name} ({s.email}) --> {status}")
 
+def add_grades(session):
+    email = input("Enter student email to add grades: ")
+    student = get_student_by_email(email)
+    
+    if not student:
+        print("No student found with that email.")
+        return
 
-def view_grades():
+    print(f"Adding grades for {student.name}")
+
+    while True:
+        try:
+            subject_id = int(input("Enter Subject ID: "))
+            grade = int(input("Enter Grade (0-100): "))
+            term = int(input("Enter Term (e.g. 1, 2, or 3): "))
+
+            # Check if grade already exists for this subject and term
+            existing = session.query(Grade).filter_by(
+                student_id=student.id,
+                subject_id=subject_id,
+                term=term
+            ).first()
+
+            if existing:
+                print("Grade for this subject and term already exists. Use update feature if needed.")
+            else:
+                new_grade = Grade(
+                    student_id=student.id,
+                    subject_id=subject_id,
+                    grade=grade,
+                    term=term
+                )
+                session.add(new_grade)
+                session.commit()
+                print("Grade added successfully.")
+
+        except ValueError:
+            print("Invalid input. Please enter numeric values for subject ID, grade, and term.")
+            session.rollback()
+
+        another = input("Add another grade? (y/n): ").lower()
+        if another != 'y':
+            break
+
+
+
+def view_grades(session):
     student_email = input("Enter student email to view grades: ")
     student = get_student_by_email(student_email)
     if not student:
@@ -167,6 +212,7 @@ def main():
         "5": mark_attendance,
         "6": view_register,
         "7": view_grades,
+        "8":add_grades
     }
 
     while True:
@@ -180,6 +226,7 @@ def main():
         print("5. Mark Attendance")
         print("6. View Register")
         print("7. View Student Grades")
+        print("8. Mark grades")
         choice = input("Enter an option: ")
 
         if choice == "0":
